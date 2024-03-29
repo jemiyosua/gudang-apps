@@ -210,7 +210,7 @@ func Category(c *gin.Context) {
 				}
 				// ------ end of Param Validation ------
 
-				query := fmt.Sprintf("INSERT INTO db_category_product(cat_name, status, user_input, tgl_input) VALUES ('%s', 1, '%s', sysdate())", namaKategori, username)
+				query := fmt.Sprintf("INSERT INTO db_category_product(cat_name, status, user_input, tgl_input) VALUES ('%s', 1, '%s', sysdate() + interval 7 hour)", namaKategori, username)
 				if _, err = db.Exec(query); err != nil {
 					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
 					dataLogCategory(jCategoryResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
@@ -291,8 +291,8 @@ func Category(c *gin.Context) {
 					return
 				}
 
-				Log := fmt.Sprintf("DELETE ITEM : %s at %s : %s %s by %s", id, hour, minute, state, username)
-				helper.LogActivity(username, "MASTER-ITEM", ip, bodyString, method, Log, errorCode, role, c)
+				Log := fmt.Sprintf("DELETE CATEGORY : %s at %s : %s %s by %s", id, hour, minute, state, username)
+				helper.LogActivity(username, "CATEGORY", ip, bodyString, method, Log, errorCode, role, c)
 				dataLogCategory(jCategoryResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
 			} else if method == "SELECT" {
@@ -389,7 +389,7 @@ func Category(c *gin.Context) {
 
 func dataLogCategory(jCategoryResponses []JCategoryResponse, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
 	if errorCode != "0" {
-		helper.SendLogError(username, "MASTER ITEM", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
+		helper.SendLogError(username, "CATEGORY", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
 	}
 	returnCategory(jCategoryResponses, errorCode, errorMessage, logData, totalRecords, totalPage, c)
 	return

@@ -20,24 +20,24 @@ import (
 )
 
 type JProductPriceRequest struct {
-	Username  string
-	ParamKey  string
-	Method    string
-	Id        string
-	ProductId string
-	HargaBeli int
-	HargaJual int
-	Margin    int
-	Status    string
-	Page      int
-	RowPage   int
-	OrderBy   string
-	Order     string
+	Username   string
+	ParamKey   string
+	Method     string
+	Id         string
+	KodeProduk string
+	HargaBeli  int
+	HargaJual  int
+	Margin     int
+	Status     string
+	Page       int
+	RowPage    int
+	OrderBy    string
+	Order      string
 }
 
 type JProductPriceResponse struct {
 	Id           string
-	ProductId    string
+	KodeProduk   string
 	HargaBeli    int
 	HargaJual    int
 	Margin       int
@@ -134,7 +134,7 @@ func ProductPrice(c *gin.Context) {
 			paramKey := reqBody.ParamKey
 			method := reqBody.Method
 			id := reqBody.Id
-			productId := reqBody.ProductId
+			kodeProduk := reqBody.KodeProduk
 			hargaBeli := reqBody.HargaBeli
 			hargaJual := reqBody.HargaJual
 			margin := reqBody.Margin
@@ -197,8 +197,8 @@ func ProductPrice(c *gin.Context) {
 			if method == "INSERT" {
 
 				// ------ Param Validation ------
-				if productId == "" {
-					errorMessage += "Product ID can't null value"
+				if kodeProduk == "" {
+					errorMessage += "Kode Produk can't null value"
 				}
 
 				if hargaBeli <= 0 {
@@ -217,14 +217,14 @@ func ProductPrice(c *gin.Context) {
 
 				margin = hargaJual - hargaBeli
 
-				query := fmt.Sprintf("INSERT INTO db_master_product_harga(produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s','%d','%d','%d', 1, '%s', sysdate() + interval 7 hour)", productId, hargaBeli, hargaJual, margin, username)
+				query := fmt.Sprintf("INSERT INTO db_master_product_harga(produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s','%d','%d','%d', 1, '%s', sysdate() + interval 7 hour)", kodeProduk, hargaBeli, hargaJual, margin, username)
 				if _, err = db.Exec(query); err != nil {
 					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
 					dataLogProductPrice(jProductPriceResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
-				Log := fmt.Sprintf("INSERT NEW PRODUCT PRICE : %s at %s : %s %s by %s", productId, hour, minute, state, username)
+				Log := fmt.Sprintf("INSERT NEW PRODUCT PRICE : %s at %s : %s %s by %s", kodeProduk, hour, minute, state, username)
 				helper.LogActivity(username, "PRODUCT PRICE", ip, bodyString, method, Log, errorCode, role, c)
 				dataLogProductPrice(jProductPriceResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
@@ -246,12 +246,12 @@ func ProductPrice(c *gin.Context) {
 					queryWhere += fmt.Sprintf(" id = '%s' ", id)
 				}
 
-				if productId != "" {
+				if kodeProduk != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 
-					queryWhere += fmt.Sprintf(" produk_id LIKE '%%%s%%' ", productId)
+					queryWhere += fmt.Sprintf(" produk_id LIKE '%%%s%%' ", kodeProduk)
 				}
 
 				if status != "" {
@@ -297,7 +297,7 @@ func ProductPrice(c *gin.Context) {
 				for rows.Next() {
 					err = rows.Scan(
 						&jProductPriceResponse.Id,
-						&jProductPriceResponse.ProductId,
+						&jProductPriceResponse.KodeProduk,
 						&jProductPriceResponse.HargaBeli,
 						&jProductPriceResponse.HargaJual,
 						&jProductPriceResponse.Margin,

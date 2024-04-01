@@ -26,6 +26,7 @@ func main() {
 	router.POST(apiVersion+"TransaksiBeli", TransaksiBeli)
 	router.POST(apiVersion+"Category", Category)
 	router.POST(apiVersion+"ProductPrice", ProductPrice)
+	router.POST(apiVersion+"ProductStock", ProductStock)
 
 	PORT := os.Getenv("PORT")
 

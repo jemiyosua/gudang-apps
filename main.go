@@ -23,7 +23,10 @@ func main() {
 
 	router.POST(apiVersion+"Login", Login)
 	router.POST(apiVersion+"Menu", Menu)
+	router.POST(apiVersion+"MasterProduk", MasterProduk)
 	router.POST(apiVersion+"TransaksiBeli", TransaksiBeli)
+	router.POST(apiVersion+"TransaksiJual", TransaksiJual)
+	router.POST(apiVersion+"TransaksiJualDetail", TransaksiJualDetail)
 	router.POST(apiVersion+"Category", Category)
 	router.POST(apiVersion+"ProductPrice", ProductPrice)
 	router.POST(apiVersion+"ProductStock", ProductStock)

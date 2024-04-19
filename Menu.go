@@ -37,16 +37,6 @@ type JMenuResponse struct {
 	Href string
 	Status string
 	TanggalInput string
-	SubMenu []JMenuSubResponse
-}
-
-type JMenuSubResponse struct {
-	Id string
-	ParentId string
-	Menu string
-	Href string
-	Status string
-	TanggalInput string
 }
 
 func Menu(c *gin.Context) {
@@ -67,9 +57,6 @@ func Menu(c *gin.Context) {
 	reqBody := JMenuRequest{}
 	jMenuResponse := JMenuResponse{}
 	jMenuResponses := []JMenuResponse{}
-
-	jMenuSubResponse := JMenuSubResponse{}
-	jMenuSubResponses := []JMenuSubResponse{}
 
 	errorCode := "1"
 	errorMessage := ""
@@ -248,37 +235,6 @@ func Menu(c *gin.Context) {
 						&jMenuResponse.TanggalInput,
 					)
 
-					// ---------- start query get sub menu ----------
-					query1 := fmt.Sprintf(`SELECT id, parent_id, menu, href, status, tgl_input FROM db_menu_sub WHERE parent_id = '%s'`, jMenuResponse.Id)
-					rows, err := db.Query(query1)
-					defer rows.Close()
-					if err != nil {
-						errorMessage = "Error running, " + err.Error()
-						dataLogMenu(jMenuResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-						return
-					}
-
-					for rows.Next() {
-						err = rows.Scan(
-							&jMenuSubResponse.Id,
-							&jMenuSubResponse.ParentId,
-							&jMenuSubResponse.Menu,
-							&jMenuSubResponse.Href,
-							&jMenuSubResponse.Status,
-							&jMenuSubResponse.TanggalInput,
-						)
-
-						jMenuSubResponses = append(jMenuSubResponses, jMenuSubResponse)
-
-						if err != nil {
-							errorMessage = fmt.Sprintf("Error running %q: %+v", query1, err)
-							dataLogMenu(jMenuResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-							return
-						}
-					}
-					// ----------end of query get sub menu ----------
-
-					jMenuResponse.SubMenu = jMenuSubResponses
 					jMenuResponses = append(jMenuResponses, jMenuResponse)
 
 					if err != nil {

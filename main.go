@@ -30,6 +30,7 @@ func main() {
 	router.POST(apiVersion+"Category", Category)
 	router.POST(apiVersion+"ProductPrice", ProductPrice)
 	router.POST(apiVersion+"ProductStock", ProductStock)
+	router.POST(apiVersion+"ScanProduct", ScanProduct)
 
 	PORT := os.Getenv("PORT")
 

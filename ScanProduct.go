@@ -19,30 +19,25 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type JTransaksiJualDetailRequest struct {
+type JScanProductRequest struct {
 	Username string
 	ParamKey string
 	Method string
-	TransaksiId string
+	IdProduk string
 	Page        int
 	RowPage     int
 	OrderBy     string
 	Order       string
 }
 
-type JTransaksiJualDetailResponse struct {
-	Id string
-	TransaksiId string
-	ProdukId string
+type JScanProductResponse struct {
+	IdProduk string
 	NamaProduk string
+	CategoryProduct string
 	HargaJual string
-	Qty string
-	Total string
-	UserInput string
-	TanggalInput string
 }
 
-func TransaksiJualDetail(c *gin.Context) {
+func ScanProduct(c *gin.Context) {
 	db := helper.Connect(c)
 	defer db.Close()
 	startTime := time.Now()
@@ -57,9 +52,9 @@ func TransaksiJualDetail(c *gin.Context) {
 		totalPage float64
 	)
 
-	reqBody := JTransaksiJualDetailRequest{}
-	jTransaksiJualDetailResponse := JTransaksiJualDetailResponse{}
-	jTransaksiJualDetailResponses := []JTransaksiJualDetailResponse{}
+	reqBody := JScanProductRequest{}
+	jScanProductResponse := JScanProductResponse{}
+	jScanProductResponses := []JScanProductResponse{}
 
 	errorCode := "1"
 	errorMessage := ""
@@ -85,7 +80,7 @@ func TransaksiJualDetail(c *gin.Context) {
 
 	// ---------- start log file ----------
 	dateNow := startTime.Format("2006-01-02")
-	logFile = logFile + "TransaksiJualDetail_" + dateNow + ".log"
+	logFile = logFile + "ScanProduct_" + dateNow + ".log"
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -108,14 +103,14 @@ func TransaksiJualDetail(c *gin.Context) {
 
 	if string(bodyString) == "" {
 		errorMessage = "Error, Body is empty"
-		dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+		dataLogScanProduct(jScanProductResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 		return
 	}
 
 	IsJson := helper.IsJson(bodyString)
 	if !IsJson {
 		errorMessage = "Error, Body - invalid json data"
-		dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+		dataLogScanProduct(jScanProductResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 		return
 	}
 	// ------ end of body json validation ------
@@ -124,19 +119,19 @@ func TransaksiJualDetail(c *gin.Context) {
 	if helper.ValidateHeader(bodyString, c) {
 		if err := c.ShouldBindJSON(&reqBody); err != nil {
 			errorMessage = "Error, Bind Json Data"
-			dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+			dataLogScanProduct(jScanProductResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 			return
 		} else {
 			username := reqBody.Username
 			paramKey := reqBody.ParamKey
 			method := reqBody.Method
-			transaksiId := reqBody.TransaksiId
+			idProduk := reqBody.IdProduk
 			page := reqBody.Page
 			rowPage := reqBody.RowPage
 
 			errorCodeRole, errorMessageRole, _ := helper.GetRole(username, c)
 			if errorCodeRole == "1" {
-				dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, reqBody.Username, errorCodeRole, errorMessageRole, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogScanProduct(jScanProductResponses, reqBody.Username, errorCodeRole, errorMessageRole, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 
@@ -154,7 +149,7 @@ func TransaksiJualDetail(c *gin.Context) {
 			}
 
 			if errorMessage != "" {
-				dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogScanProduct(jScanProductResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 			// ------ end of Param Validation ------
@@ -162,21 +157,9 @@ func TransaksiJualDetail(c *gin.Context) {
 			// ------ start check session paramkey ------
 			checkAccessVal := helper.CheckSession(username, paramKey, c)
 			if checkAccessVal != "1" {
-				dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCodeSession, errorMessageSession, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogScanProduct(jScanProductResponses, username, errorCodeSession, errorMessageSession, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
-
-			// currentTime := time.Now()
-			// timeNow := currentTime.Format("15:04:05")
-			// timeNowSplit := strings.Split(timeNow, ":")
-			// hour := timeNowSplit[0]
-			// minute := timeNowSplit[1]
-			// state := ""
-			// if hour < "12" {
-			// 	state = "AM"
-			// } else {
-			// 	state = "PM"
-			// }
 
 			if method == "INSERT" {
 
@@ -196,7 +179,7 @@ func TransaksiJualDetail(c *gin.Context) {
 				}
 
 				if errorMessage != "" {
-					dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogScanProduct(jScanProductResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 				// ------ end of Param Validation ------
@@ -204,14 +187,14 @@ func TransaksiJualDetail(c *gin.Context) {
 				pageNow := (page - 1) * rowPage
 				pageNowString := strconv.Itoa(pageNow)
 				queryLimit := ""
-				queryWhere := ""
+				queryWhere := " dbm.produk_id = dmph.produk_id AND dbm.cat_produk = dcp.id "
 
-				if transaksiId != "" {
+				if idProduk != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
 					
-					queryWhere += fmt.Sprintf(" transaksi_id = '%s' ", transaksiId)
+					queryWhere += fmt.Sprintf(" dbm.produk_id = '%s' ", idProduk)
 				}
 
 				if queryWhere != "" {
@@ -220,10 +203,10 @@ func TransaksiJualDetail(c *gin.Context) {
 
 				totalRecords = 0
 				totalPage = 0
-				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_transaksi_jual_detail %s", queryWhere)
+				query := fmt.Sprintf("SELECT COUNT(*) AS cnt FROM db_master_product dbm, db_category_product dcp, db_master_product_harga dmph %s", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage = "Error running, " + err.Error()
-					dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogScanProduct(jScanProductResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
@@ -236,63 +219,52 @@ func TransaksiJualDetail(c *gin.Context) {
 					totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 				}
 
-				query1 := fmt.Sprintf(`SELECT id, transaksi_id, produk_id, harga_jual, qty, total, user_input, tgl_input FROM db_transaksi_jual_detail %s %s`, queryWhere, queryLimit)
+				query1 := fmt.Sprintf(" SELECT dbm.produk_id, nama_produk, cat_name, harga_jual FROM db_master_product dbm, db_category_product dcp, db_master_product_harga dmph %s %s", queryWhere, queryLimit)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage = "Error running, " + err.Error()
-					dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogScanProduct(jScanProductResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
 				for rows.Next() {
 					err = rows.Scan(
-						&jTransaksiJualDetailResponse.Id,
-						&jTransaksiJualDetailResponse.TransaksiId,
-						&jTransaksiJualDetailResponse.ProdukId,
-						&jTransaksiJualDetailResponse.HargaJual,
-						&jTransaksiJualDetailResponse.Qty,
-						&jTransaksiJualDetailResponse.Total,
-						&jTransaksiJualDetailResponse.UserInput,
-						&jTransaksiJualDetailResponse.TanggalInput,
+						&jScanProductResponse.IdProduk,
+						&jScanProductResponse.NamaProduk,
+						&jScanProductResponse.CategoryProduct,
+						&jScanProductResponse.HargaJual,
 					)
 
-					query := fmt.Sprintf("SELECT nama_produk FROM db_master_product WHERE produk_id = '%s'", jTransaksiJualDetailResponse.ProdukId)
-					if err := db.QueryRow(query).Scan(&jTransaksiJualDetailResponse.NamaProduk); err != nil {
-						errorMessage = "Error running, " + err.Error()
-						dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-						return
-					}
-
-					jTransaksiJualDetailResponses = append(jTransaksiJualDetailResponses, jTransaksiJualDetailResponse)
+					jScanProductResponses = append(jScanProductResponses, jScanProductResponse)
 
 					if err != nil {
 						errorMessage = fmt.Sprintf("Error running %q: %+v", query1, err)
-						dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+						dataLogScanProduct(jScanProductResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 						return
 					}
 				}
 
-				dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogScanProduct(jScanProductResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			} else {
 				errorMessage = "Method undifined!"
-				dataLogTransaksiJualDetail(jTransaksiJualDetailResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogScanProduct(jScanProductResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 		}
 	}
 }
 
-func dataLogTransaksiJualDetail(jTransaksiJualDetailResponses []JTransaksiJualDetailResponse, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
+func dataLogScanProduct(jScanProductResponses []JScanProductResponse, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
 	if errorCode != "0" {
-		helper.SendLogError(username, "MASTER ITEM", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
+		helper.SendLogError(username, "SCAN PRODUCT", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
 	}
-	returnTransaksiJualDetail(jTransaksiJualDetailResponses, errorCode, errorMessage, logData, totalRecords, totalPage, c)
+	returnScanProduct(jScanProductResponses, errorCode, errorMessage, logData, totalRecords, totalPage, c)
 	return
 }
 
-func returnTransaksiJualDetail(jTransaksiJualDetailResponses []JTransaksiJualDetailResponse, errorCode string, errorMessage string, logData string, totalRecords float64, totalPage float64, c *gin.Context) {
+func returnScanProduct(jScanProductResponses []JScanProductResponse, errorCode string, errorMessage string, logData string, totalRecords float64, totalPage float64, c *gin.Context) {
 
 	if strings.Contains(errorMessage, "Error running") {
 		errorMessage = "Error Execute data"
@@ -310,7 +282,7 @@ func returnTransaksiJualDetail(jTransaksiJualDetailResponses []JTransaksiJualDet
 			"DateTime":   currentTime1,
 			"TotalRecords":   totalRecords,
 			"TotalPage":   totalPage,
-			"Result": jTransaksiJualDetailResponses,
+			"Result": jScanProductResponses, 
 		})
 	}
 

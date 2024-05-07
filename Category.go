@@ -152,14 +152,6 @@ func Category(c *gin.Context) {
 				errorMessage += "Method can't null value"
 			}
 
-			if page == 0 {
-				errorMessage += "Page can't null or 0 value"
-			}
-
-			if rowPage == 0 {
-				errorMessage += "Page can't null or 0 value"
-			}
-
 			if errorMessage != "" {
 				dataLogCategory(jCategoryResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
@@ -296,6 +288,19 @@ func Category(c *gin.Context) {
 				dataLogCategory(jCategoryResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
 			} else if method == "SELECT" {
+				if page == 0 {
+					errorMessage += "Page can't null or 0 value"
+				}
+	
+				if rowPage == 0 {
+					errorMessage += "Page can't null or 0 value"
+				}
+
+				if errorMessage != "" {
+					dataLogCategory(jCategoryResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					return
+				}
+
 				pageNow := (page - 1) * rowPage
 				pageNowString := strconv.Itoa(pageNow)
 				queryLimit := ""

@@ -22,38 +22,41 @@ import (
 )
 
 type JTransaksiBeliRequest struct {
-	Username           string
-	ParamKey           string
-	Method             string
-	Id                 string
-	TransaksiId        string
-	IdProduk           string
-	HargaProduk        string
-	StatusProduk       string
+	Username string
+	ParamKey string
+	Method string
+	Id string
+	KodeProduk string
+	NamaProduk string
+	HargaProduk string
+	StatusProduk string
 	TransaksiBelitList []JTransaksiBeliListRequest
-	Page               int
-	RowPage            int
-	OrderBy            string
-	Order              string
+	Page        int
+	RowPage     int
+	OrderBy     string
+	Order       string
 }
 
 type JTransaksiBeliListRequest struct {
-	IdProduk        string
-	KategoriProduk  string
-	HargaBeliProduk float64
-	Isi             int
-	Unit            string
-	Qty             int
-	Total           int
+	IdProduk string
+	NamaProduk string
+	KategoriProduk string
+	HargaBeliProduk string
+	HargaJualProduk string
+	Unit string
+	Qty string
+	Isi string
+	Total string
+	StatusProduk string
 }
 
 type JTransaksiBeliResponse struct {
-	Id              string
-	TransaksiId     string
-	JumlahTransaksi string
-	TotalTransaksi  string
-	UserInput       string
-	TanggalInput    string
+	Id string
+	KodeProduk string
+	NamaProduk string
+	HargaProduk string
+	StatusProduk string
+	TanggalInput string
 }
 
 func TransaksiBeli(c *gin.Context) {
@@ -63,12 +66,12 @@ func TransaksiBeli(c *gin.Context) {
 	startTimeString := startTime.String()
 
 	var (
-		bodyBytes    []byte
-		xRealIp      string
-		ip           string
-		logFile      string
+		bodyBytes []byte
+		xRealIp   string
+		ip        string
+		logFile   string
 		totalRecords float64
-		totalPage    float64
+		totalPage float64
 	)
 
 	reqBody := JTransaksiBeliRequest{}
@@ -146,12 +149,14 @@ func TransaksiBeli(c *gin.Context) {
 			method := reqBody.Method
 			transaksiBeliList := reqBody.TransaksiBelitList
 			id := reqBody.Id
-			idProduk := reqBody.IdProduk
-			transaksiId := reqBody.TransaksiId
+			kodeProduk := reqBody.KodeProduk
+			namaProduk := reqBody.NamaProduk
+			hargaProduk := reqBody.HargaProduk
+			statusProduk := reqBody.StatusProduk
 			page := reqBody.Page
 			rowPage := reqBody.RowPage
 
-			errorCodeRole, errorMessageRole, _ := helper.GetRole(username, c)
+			errorCodeRole, errorMessageRole, role := helper.GetRole(username, c)
 			if errorCodeRole == "1" {
 				dataLogTransaksiBeli(jTransaksiBeliResponses, reqBody.Username, errorCodeRole, errorMessageRole, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
@@ -183,17 +188,17 @@ func TransaksiBeli(c *gin.Context) {
 				return
 			}
 
-			// currentTime := time.Now()
-			// timeNow := currentTime.Format("15:04:05")
-			// timeNowSplit := strings.Split(timeNow, ":")
-			// hour := timeNowSplit[0]
-			// minute := timeNowSplit[1]
-			// state := ""
-			// if hour < "12" {
-			// 	state = "AM"
-			// } else {
-			// 	state = "PM"
-			// }
+			currentTime := time.Now()
+			timeNow := currentTime.Format("15:04:05")
+			timeNowSplit := strings.Split(timeNow, ":")
+			hour := timeNowSplit[0]
+			minute := timeNowSplit[1]
+			state := ""
+			if hour < "12" {
+				state = "AM"
+			} else {
+				state = "PM"
+			}
 
 			if method == "INSERT" {
 
@@ -210,8 +215,8 @@ func TransaksiBeli(c *gin.Context) {
 				hour := timeSplit[0]
 				minute := timeSplit[1]
 				second := timeSplit[2]
-
-				transactionId := "TRX_OUT_" + day + month + year + "_" + hour + minute + second
+				
+				transactionId := "TRX_" + day + month + year + "_" + hour + minute + second
 
 				sliceLength := len(transaksiBeliList)
 
@@ -231,15 +236,58 @@ func TransaksiBeli(c *gin.Context) {
 						try.This(func() {
 
 							idProdukList := transaksiBeliList[i].IdProduk
-							hargaBeliProdukList := transaksiBeliList[i].HargaBeliProduk
+							namaProdukList := transaksiBeliList[i].NamaProduk
+							catProdukList := transaksiBeliList[i].KategoriProduk
+							hargaBeliProduklist := transaksiBeliList[i].HargaBeliProduk
+							hargaJualProdukList := transaksiBeliList[i].HargaJualProduk
+							unitProduklist := transaksiBeliList[i].Unit
 							qtyProdukList := transaksiBeliList[i].Qty
-							unitProdukList := transaksiBeliList[i].Unit
 							isiProdukList := transaksiBeliList[i].Isi
 							totalProdukList := transaksiBeliList[i].Total
+							statusProdukList := transaksiBeliList[i].StatusProduk
 
-							query := fmt.Sprintf("INSERT INTO db_transaksi_beli_detail (transaksi_id, produk_id, harga_beli, unit, qty, total, isi, user_input, tgl_input) VALUES ('%s', '%s', '%f', '%s', '%d', '%d', '%d', '%s', NOW())", transactionId, idProdukList, hargaBeliProdukList, unitProdukList, qtyProdukList, isiProdukList, totalProdukList, username)
-							if _, err = db.Exec(query); err != nil {
+							// cek tabel master produk
+							cntKodeProdukDB := 0
+							query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_product WHERE produk_id = '%s'", idProdukList)
+							if err := db.QueryRow(query).Scan(&cntKodeProdukDB); err != nil {
 								errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
+								dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+								// return
+							}
+
+							if cntKodeProdukDB == 0 {
+								query := fmt.Sprintf("INSERT INTO db_master_product (produk_id, nama_produk, cat_produk, status, user_input, tgl_update, tgl_input) VALUES ('%s', '%s', '%s', '%s', '%s', NOW(), NOW())", idProdukList, namaProdukList, catProdukList, statusProdukList, username)
+								if _, err = db.Exec(query); err != nil {
+									errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
+									dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+									// return
+								}
+							}
+
+							// cek tabel master produk harga
+							hargaBeliDB := ""
+							query2 := fmt.Sprintf("SELECT IFNULL(harga_beli,0) harga_beli FROM db_master_product_harga WHERE produk_id = '%s'", transaksiBeliList[i].IdProduk)
+							if err := db.QueryRow(query2).Scan(&hargaBeliDB); err != nil {
+								errorMessage = fmt.Sprintf("Error running %q: %+v", query2, err)
+								dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+								// return
+							}
+
+							if hargaBeliDB != hargaBeliProduklist {
+								hargaBeliInt, _ := strconv.Atoi(hargaBeliProduklist)
+								hargaJualInt, _ := strconv.Atoi(hargaJualProdukList)
+								margin := hargaJualInt - hargaBeliInt
+								query := fmt.Sprintf("INSERT INTO db_master_product_harga (produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s', '%s', '%s', '%d', '1', '%s', NOW())", idProdukList, hargaBeliProduklist, hargaJualProdukList, margin, username)
+								if _, err = db.Exec(query); err != nil {
+									errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
+									dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+									// return
+								}
+							}
+
+							query1 := fmt.Sprintf("INSERT INTO db_transaksi_beli_detail (transaksi_id, produk_id, harga_beli, unit, qty, isi, total, user_input, tgl_input) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', NOW())", transactionId, idProdukList, hargaBeliProduklist, unitProduklist, qtyProdukList, isiProdukList, totalProdukList, username)
+							if _, err = db.Exec(query1); err != nil {
+								errorMessage = fmt.Sprintf("Error running %q: %+v", query1, err)
 								dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 								// return
 							}
@@ -254,11 +302,65 @@ func TransaksiBeli(c *gin.Context) {
 
 				runtime.GC()
 
+				// Log := fmt.Sprintf("INSERT NEW ITEM : %s at %s : %s %s by %s", kodeProduk, hour, minute, state, username)
+				// helper.LogActivity(username, "MASTER-ITEM", ip, bodyString, method, Log, errorCode, role, c)
 				dataLogTransaksiBeli(jTransaksiBeliResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
 			} else if method == "UPDATE" {
 
+				if kodeProduk == "" {
+					errorMessage += "Kode Produk can't null value"
+					dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					return
+				}
+
+				queryUpdate := ""
+
+				if kodeProduk != "" {
+					queryUpdate += fmt.Sprintf(" , kode_produk = '%s' ", kodeProduk)
+				}
+
+				if namaProduk != "" {
+					queryUpdate += fmt.Sprintf(" , nama_produk = '%s' ", namaProduk)
+				}
+
+				if hargaProduk != "" {
+					queryUpdate += fmt.Sprintf(" , harga_produk = '%s' ", hargaProduk)
+				}
+
+				if statusProduk != "" {
+					queryUpdate += fmt.Sprintf(" , status = '%s' ", statusProduk)
+				}
+
+				query := fmt.Sprintf("UPDATE db_master_item SET tgl_update = NOW() %s WHERE kode_produk = '%s'", queryUpdate, kodeProduk)
+				if _, err = db.Exec(query); err != nil {
+					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
+					dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					return
+				}
+
+				Log := fmt.Sprintf("UPDATE ITEM : %s at %s : %s %s by %s", kodeProduk, hour, minute, state, username)
+				helper.LogActivity(username, "MASTER-ITEM", ip, bodyString, method, Log, errorCode, role, c)
+				dataLogTransaksiBeli(jTransaksiBeliResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+
 			} else if method == "DELETE" {
+
+				if kodeProduk == "" {
+					errorMessage += "Kode Produk can't null value"
+					dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					return
+				}
+
+				query := fmt.Sprintf("DELETE FROM db_master_item WHERE kode_produk = '%s'", kodeProduk)
+				if _, err = db.Exec(query); err != nil {
+					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
+					dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					return
+				}
+
+				Log := fmt.Sprintf("DELETE ITEM : %s at %s : %s %s by %s", kodeProduk, hour, minute, state, username)
+				helper.LogActivity(username, "MASTER-ITEM", ip, bodyString, method, Log, errorCode, role, c)
+				dataLogTransaksiBeli(jTransaksiBeliResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
 			} else if method == "SELECT" {
 
@@ -266,7 +368,7 @@ func TransaksiBeli(c *gin.Context) {
 				if page == 0 {
 					errorMessage += "Page can't null or 0 value"
 				}
-
+	
 				if rowPage == 0 {
 					errorMessage += "Page can't null or 0 value"
 				}
@@ -290,20 +392,28 @@ func TransaksiBeli(c *gin.Context) {
 					queryWhere += fmt.Sprintf(" id = '%s' ", id)
 				}
 
-				if idProduk != "" {
+				if kodeProduk != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
-
-					queryWhere += fmt.Sprintf(" produk_id = '%s' ", idProduk)
+					
+					queryWhere += fmt.Sprintf(" kode_produk = '%s' ", kodeProduk)
 				}
 
-				if transaksiId != "" {
+				if namaProduk != "" {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
+					
+					queryWhere += fmt.Sprintf(" nama_produk LIKE '%%%s%%' ", namaProduk)
+				}
 
-					queryWhere += fmt.Sprintf(" transaksi_id LIKE '%%%s%%' ", transaksiId)
+				if statusProduk != "" {
+					if queryWhere != "" {
+						queryWhere += " AND "
+					}
+					
+					queryWhere += fmt.Sprintf(" status = '%s' ", statusProduk)
 				}
 
 				if queryWhere != "" {
@@ -312,7 +422,7 @@ func TransaksiBeli(c *gin.Context) {
 
 				totalRecords = 0
 				totalPage = 0
-				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_transaksi_beli %s", queryWhere)
+				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_item %s", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage = "Error running, " + err.Error()
 					dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
@@ -328,7 +438,8 @@ func TransaksiBeli(c *gin.Context) {
 					totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 				}
 
-				query1 := fmt.Sprintf(`SELECT id, transaksi_id, jumlah_transaksi, user_input, tgl_input FROM db_transaksi_beli %s %s`, queryWhere, queryLimit)
+				query1 := fmt.Sprintf(`SELECT id, kode_produk, nama_produk, harga_produk, tgl_input FROM db_master_item %s %s`, queryWhere, queryLimit)
+				fmt.Println(query1)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
@@ -340,18 +451,11 @@ func TransaksiBeli(c *gin.Context) {
 				for rows.Next() {
 					err = rows.Scan(
 						&jTransaksiBeliResponse.Id,
-						&jTransaksiBeliResponse.TransaksiId,
-						&jTransaksiBeliResponse.JumlahTransaksi,
-						&jTransaksiBeliResponse.UserInput,
+						&jTransaksiBeliResponse.KodeProduk,
+						&jTransaksiBeliResponse.NamaProduk,
+						&jTransaksiBeliResponse.HargaProduk,
 						&jTransaksiBeliResponse.TanggalInput,
 					)
-
-					query := fmt.Sprintf("SELECT sum(total) as total_transaksi FROM db_transaksi_beli_detail WHERE transaksi_id = '%s'", jTransaksiBeliResponse.TransaksiId)
-					if err := db.QueryRow(query).Scan(&jTransaksiBeliResponse.TotalTransaksi); err != nil {
-						errorMessage = "Error running, " + err.Error()
-						dataLogTransaksiBeli(jTransaksiBeliResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-						return
-					}
 
 					jTransaksiBeliResponses = append(jTransaksiBeliResponses, jTransaksiBeliResponse)
 
@@ -361,6 +465,8 @@ func TransaksiBeli(c *gin.Context) {
 						return
 					}
 				}
+
+				fmt.Println("OK")
 
 				dataLogTransaksiBeli(jTransaksiBeliResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
@@ -375,7 +481,7 @@ func TransaksiBeli(c *gin.Context) {
 
 func dataLogTransaksiBeli(jTransaksiBeliResponses []JTransaksiBeliResponse, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
 	if errorCode != "0" {
-		helper.SendLogError(username, "TRANSAKSI BELI", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
+		helper.SendLogError(username, "MASTER ITEM", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
 	}
 	returnTransaksiBeli(jTransaksiBeliResponses, errorCode, errorMessage, logData, totalRecords, totalPage, c)
 	return
@@ -396,10 +502,10 @@ func returnTransaksiBeli(jTransaksiBeliResponses []JTransaksiBeliResponse, error
 		c.PureJSON(http.StatusOK, gin.H{
 			"ErrorCode":    errorCode,
 			"ErrorMessage": errorMessage,
-			"DateTime":     currentTime1,
-			"TotalRecords": totalRecords,
-			"TotalPage":    totalPage,
-			"Result":       jTransaksiBeliResponses,
+			"DateTime":   currentTime1,
+			"TotalRecords":   totalRecords,
+			"TotalPage":   totalPage,
+			"Result": jTransaksiBeliResponses, 
 		})
 	}
 
@@ -411,7 +517,7 @@ func returnTransaksiBeli(jTransaksiBeliResponses []JTransaksiBeliResponse, error
 
 	diff := endTime.Sub(startTime)
 
-	logDataNew := rex.ReplaceAllString(logData+codeError+"~"+endTime.String()+"~"+diff.String()+"~"+errorMessage, "")
+	logDataNew := rex.ReplaceAllString(logData + codeError + "~" + endTime.String() + "~" + diff.String() + "~" + errorMessage, "")
 	log.Println(logDataNew)
 
 	runtime.GC()

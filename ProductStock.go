@@ -43,7 +43,8 @@ type JProductStockResponse struct {
 	Quantity       int
 	IsiProduk      int
 	TotalProduk    int
-	TanggalExpired string
+	TanggalExpiredDate string
+	TanggalExpiredString string
 	TanggalInput   string
 }
 
@@ -70,6 +71,7 @@ func ProductStock(c *gin.Context) {
 	errorMessage := ""
 	errorCodeSession := "2"
 	errorMessageSession := "Session Expired"
+	totalStok := 0
 
 	allHeader := helper.ReadAllHeader(c)
 	logFile = os.Getenv("LOGFILE")
@@ -113,14 +115,14 @@ func ProductStock(c *gin.Context) {
 
 	if string(bodyString) == "" {
 		errorMessage = "Error, Body is empty"
-		dataLogProductStock(jProductStockResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+		dataLogProductStock(jProductStockResponses, totalStok, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 		return
 	}
 
 	IsJson := helper.IsJson(bodyString)
 	if !IsJson {
 		errorMessage = "Error, Body - invalid json data"
-		dataLogProductStock(jProductStockResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+		dataLogProductStock(jProductStockResponses, totalStok, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 		return
 	}
 	// ------ end of body json validation ------
@@ -129,7 +131,7 @@ func ProductStock(c *gin.Context) {
 	if helper.ValidateHeader(bodyString, c) {
 		if err := c.ShouldBindJSON(&reqBody); err != nil {
 			errorMessage = "Error, Bind Json Data"
-			dataLogProductStock(jProductStockResponses, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+			dataLogProductStock(jProductStockResponses, totalStok, reqBody.Username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 			return
 		} else {
 			username := reqBody.Username
@@ -147,7 +149,7 @@ func ProductStock(c *gin.Context) {
 
 			errorCodeRole, errorMessageRole, role := helper.GetRole(username, c)
 			if errorCodeRole == "1" {
-				dataLogProductStock(jProductStockResponses, reqBody.Username, errorCodeRole, errorMessageRole, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, reqBody.Username, errorCodeRole, errorMessageRole, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 
@@ -173,7 +175,7 @@ func ProductStock(c *gin.Context) {
 			}
 
 			if errorMessage != "" {
-				dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 			// ------ end of Param Validation ------
@@ -181,7 +183,7 @@ func ProductStock(c *gin.Context) {
 			// ------ start check session paramkey ------
 			checkAccessVal := helper.CheckSession(username, paramKey, c)
 			if checkAccessVal != "1" {
-				dataLogProductStock(jProductStockResponses, username, errorCodeSession, errorMessageSession, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, username, errorCodeSession, errorMessageSession, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 
@@ -207,7 +209,7 @@ func ProductStock(c *gin.Context) {
 					query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_product WHERE produk_id = '%s'", kodeProduk)
 					if err := db.QueryRow(query).Scan(&cntKodeProdukDB); err != nil {
 						errorMessage = "Error running, " + err.Error()
-						dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+						dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 						return
 					}
 
@@ -217,7 +219,7 @@ func ProductStock(c *gin.Context) {
 				}
 
 				if errorMessage != "" {
-					dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 				// ------ end of Param Validation ------
@@ -225,13 +227,13 @@ func ProductStock(c *gin.Context) {
 				query := fmt.Sprintf("INSERT INTO db_master_product_stok(produk_id, unit_produk, qty, isi_produk, total_produk, tgl_expired, user_input, tgl_input)  VALUES ('%s', '%s', '%d', '%d', '%d', '%s', '%s', sysdate() + interval 7 hour )", kodeProduk, unitProduk, quantity, isiProduk, totalProduk, tanggalExpired, username)
 				if _, err = db.Exec(query); err != nil {
 					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
-					dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
 				Log := fmt.Sprintf("INSERT NEW STOCK : %s at %s : %s %s by %s", kodeProduk, hour, minute, state, username)
 				helper.LogActivity(username, "PRODUCT STOCK", ip, bodyString, method, Log, errorCode, role, c)
-				dataLogProductStock(jProductStockResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
 			} else if method == "UPDATE" {
 
@@ -239,20 +241,20 @@ func ProductStock(c *gin.Context) {
 
 				if id == "" {
 					errorMessage += "ID Stock can't null value"
-					dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
 				query := fmt.Sprintf("DELETE FROM db_master_product_stok WHERE id = '%s'", id)
 				if _, err = db.Exec(query); err != nil {
 					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
-					dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
 				Log := fmt.Sprintf("DELETE PRODUCT STOCK : %s at %s : %s %s by %s", kodeProduk, hour, minute, state, username)
 				helper.LogActivity(username, "PRODUCT STOCK", ip, bodyString, method, Log, errorCode, role, c)
-				dataLogProductStock(jProductStockResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 
 			} else if method == "SELECT" {
 				pageNow := (page - 1) * rowPage
@@ -285,7 +287,7 @@ func ProductStock(c *gin.Context) {
 				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_product_stok %s", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage = "Error running, " + err.Error()
-					dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
@@ -298,13 +300,13 @@ func ProductStock(c *gin.Context) {
 					totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 				}
 
-				query1 := fmt.Sprintf(`SELECT id, produk_id, unit_produk, qty, isi_produk, total_produk, to_char(tgl_expired,'YYYY/MM/DD'), tgl_input  FROM db_master_product_stok %s %s`, queryWhere, queryLimit)
+				query1 := fmt.Sprintf(`SELECT id, produk_id, unit_produk, qty, isi_produk, total_produk, tgl_expired, tgl_input FROM db_master_product_stok %s %s`, queryWhere, queryLimit)
 				fmt.Println(query1)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
 					errorMessage = "Error running, " + err.Error()
-					dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}
 
@@ -316,41 +318,54 @@ func ProductStock(c *gin.Context) {
 						&jProductStockResponse.Quantity,
 						&jProductStockResponse.IsiProduk,
 						&jProductStockResponse.TotalProduk,
-						&jProductStockResponse.TanggalExpired,
+						&jProductStockResponse.TanggalExpiredDate,
 						&jProductStockResponse.TanggalInput,
 					)
+
+					tanggalExpiredDB := jProductStockResponse.TanggalExpiredDate
+					tanggalExpiredSplit := strings.Split(tanggalExpiredDB, "-")
+					date := tanggalExpiredSplit[2]
+					month := tanggalExpiredSplit[1]
+					monthString, _ := helper.GetMonthString(month)
+					year := tanggalExpiredSplit[0]
+					jProductStockResponse.TanggalExpiredString = date + " " + monthString + " " + year
 
 					jProductStockResponses = append(jProductStockResponses, jProductStockResponse)
 
 					if err != nil {
 						errorMessage = fmt.Sprintf("Error running %q: %+v", query1, err)
-						dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+						dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 						return
 					}
 				}
 
-				fmt.Println("OK")
+				queryTotalStok := fmt.Sprintf("SELECT SUM(total_produk) FROM db_master_product_stok %s", queryWhere)
+				if err := db.QueryRow(queryTotalStok).Scan(&totalStok); err != nil {
+					errorMessage = fmt.Sprintf("Error running %q: %+v", queryTotalStok, err)
+					dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+					return
+				}
 
-				dataLogProductStock(jProductStockResponses, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, username, "0", errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			} else {
 				errorMessage = "Method undifined!"
-				dataLogProductStock(jProductStockResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+				dataLogProductStock(jProductStockResponses, totalStok, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 				return
 			}
 		}
 	}
 }
 
-func dataLogProductStock(jProductStockResponses []JProductStockResponse, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
+func dataLogProductStock(jProductStockResponses []JProductStockResponse, totalStok int, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
 	if errorCode != "0" {
 		helper.SendLogError(username, "PRODUCT STOCK", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
 	}
-	returnProductStock(jProductStockResponses, errorCode, errorMessage, logData, totalRecords, totalPage, c)
+	returnProductStock(jProductStockResponses, totalStok, errorCode, errorMessage, logData, totalRecords, totalPage, c)
 	return
 }
 
-func returnProductStock(jProductStockResponses []JProductStockResponse, errorCode string, errorMessage string, logData string, totalRecords float64, totalPage float64, c *gin.Context) {
+func returnProductStock(jProductStockResponses []JProductStockResponse, totalStok int, errorCode string, errorMessage string, logData string, totalRecords float64, totalPage float64, c *gin.Context) {
 
 	if strings.Contains(errorMessage, "Error running") {
 		errorMessage = "Error Execute data"
@@ -368,7 +383,10 @@ func returnProductStock(jProductStockResponses []JProductStockResponse, errorCod
 			"DateTime":     currentTime1,
 			"TotalRecords": totalRecords,
 			"TotalPage":    totalPage,
-			"Result":       jProductStockResponses,
+			"Result":       gin.H{
+				"TotalStock":   totalStok,
+				"Result": jProductStockResponses,
+			},
 		})
 	}
 

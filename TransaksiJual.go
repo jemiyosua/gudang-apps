@@ -22,36 +22,36 @@ import (
 )
 
 type JTransaksiJualRequest struct {
-	Username           string
-	ParamKey           string
-	Method             string
-	Id                 string
-	TransaksiId        string
-	IdProduk           string
-	HargaProduk        string
-	StatusProduk       string
+	Username string
+	ParamKey string
+	Method string
+	Id string
+	TransaksiId string
+	IdProduk string
+	HargaProduk string
+	StatusProduk string
 	TransaksiJualtList []JTransaksiJualListRequest
-	Page               int
-	RowPage            int
-	OrderBy            string
-	Order              string
+	Page        int
+	RowPage     int
+	OrderBy     string
+	Order       string
 }
 
 type JTransaksiJualListRequest struct {
-	IdProduk        string
-	KategoriProduk  string
+	IdProduk string
+	KategoriProduk string
 	HargaJualProduk float64
-	Qty             int
-	Total           int
+	Qty int
+	Total int
 }
 
 type JTransaksiJualResponse struct {
-	Id              string
-	TransaksiId     string
+	Id string
+	TransaksiId string
 	JumlahTransaksi string
-	TotalTransaksi  string
-	UserInput       string
-	TanggalInput    string
+	TotalTransaksi string
+	UserInput string
+	TanggalInput string
 }
 
 func TransaksiJual(c *gin.Context) {
@@ -61,12 +61,12 @@ func TransaksiJual(c *gin.Context) {
 	startTimeString := startTime.String()
 
 	var (
-		bodyBytes    []byte
-		xRealIp      string
-		ip           string
-		logFile      string
+		bodyBytes []byte
+		xRealIp   string
+		ip        string
+		logFile   string
 		totalRecords float64
-		totalPage    float64
+		totalPage float64
 	)
 
 	reqBody := JTransaksiJualRequest{}
@@ -208,7 +208,7 @@ func TransaksiJual(c *gin.Context) {
 				hour := timeSplit[0]
 				minute := timeSplit[1]
 				second := timeSplit[2]
-
+				
 				transactionId := "TRX_OUT_" + day + month + year + "_" + hour + minute + second
 
 				sliceLength := len(transaksiJualList)
@@ -233,7 +233,7 @@ func TransaksiJual(c *gin.Context) {
 							qtyProdukList := transaksiJualList[i].Qty
 							totalProdukList := transaksiJualList[i].Total
 
-							query := fmt.Sprintf("INSERT INTO db_transaksi_jual_detail (transaksi_id, produk_id, harga_jual, qty, total, user_input, tgl_input) VALUES ('%s', '%s', '%f', '%d', '%d', '%s', NOW())", transactionId, idProdukList, hargaJualProdukList, qtyProdukList, totalProdukList, username)
+							query := fmt.Sprintf("INSERT INTO db_transaksi_beli_detail (transaksi_id, produk_id, harga_jual, qty, total, user_input, tgl_input) VALUES ('%s', '%s', '%f', '%d', '%d', '%s', NOW())", transactionId, idProdukList, hargaJualProdukList, qtyProdukList, totalProdukList, username)
 							if _, err = db.Exec(query); err != nil {
 								errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
 								dataLogTransaksiJual(jTransaksijualResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
@@ -262,7 +262,7 @@ func TransaksiJual(c *gin.Context) {
 				if page == 0 {
 					errorMessage += "Page can't null or 0 value"
 				}
-
+	
 				if rowPage == 0 {
 					errorMessage += "Page can't null or 0 value"
 				}
@@ -290,7 +290,7 @@ func TransaksiJual(c *gin.Context) {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
-
+					
 					queryWhere += fmt.Sprintf(" produk_id = '%s' ", idProduk)
 				}
 
@@ -298,7 +298,7 @@ func TransaksiJual(c *gin.Context) {
 					if queryWhere != "" {
 						queryWhere += " AND "
 					}
-
+					
 					queryWhere += fmt.Sprintf(" transaksi_id LIKE '%%%s%%' ", transaksiId)
 				}
 
@@ -371,7 +371,7 @@ func TransaksiJual(c *gin.Context) {
 
 func dataLogTransaksiJual(jTransaksijualResponses []JTransaksiJualResponse, username string, errorCode string, errorMessage string, totalRecords float64, totalPage float64, method string, path string, ip string, logData string, allHeader string, bodyJson string, c *gin.Context) {
 	if errorCode != "0" {
-		helper.SendLogError(username, "TRANSAKSI JUAL", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
+		helper.SendLogError(username, "MASTER ITEM", errorMessage, bodyJson, "", errorCode, allHeader, method, path, ip, c)
 	}
 	returnTransaksiJual(jTransaksijualResponses, errorCode, errorMessage, logData, totalRecords, totalPage, c)
 	return
@@ -392,10 +392,10 @@ func returnTransaksiJual(jTransaksijualResponses []JTransaksiJualResponse, error
 		c.PureJSON(http.StatusOK, gin.H{
 			"ErrorCode":    errorCode,
 			"ErrorMessage": errorMessage,
-			"DateTime":     currentTime1,
-			"TotalRecords": totalRecords,
-			"TotalPage":    totalPage,
-			"Result":       jTransaksijualResponses,
+			"DateTime":   currentTime1,
+			"TotalRecords":   totalRecords,
+			"TotalPage":   totalPage,
+			"Result": jTransaksijualResponses, 
 		})
 	}
 
@@ -407,7 +407,7 @@ func returnTransaksiJual(jTransaksijualResponses []JTransaksiJualResponse, error
 
 	diff := endTime.Sub(startTime)
 
-	logDataNew := rex.ReplaceAllString(logData+codeError+"~"+endTime.String()+"~"+diff.String()+"~"+errorMessage, "")
+	logDataNew := rex.ReplaceAllString(logData + codeError + "~" + endTime.String() + "~" + diff.String() + "~" + errorMessage, "")
 	log.Println(logDataNew)
 
 	runtime.GC()

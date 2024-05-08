@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"gudang/helper"
 	"io/ioutil"
@@ -262,53 +261,30 @@ func MasterProdukEach(c *gin.Context) {
 				}
 
 				if cntKodeProdukDB == 0 {
-					cntKategoriProdukDB := 0
-					queryCat := fmt.Sprintf("SELECT count(1) as cnt FROM db_category_product WHERE id = '%s'", kategoriIdProduk)
-					if err := db.QueryRow(queryCat).Scan(&cntKategoriProdukDB); err != nil && err != sql.ErrNoRows {
-						errorMessage = fmt.Sprintf("Error running %q: %+v", queryCat, err)
-						dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-						return
-					}
-
-					if cntKategoriProdukDB > 0 {
-						query := fmt.Sprintf("INSERT INTO db_master_product (produk_id, nama_produk, cat_produk, status, user_input, tgl_update, tgl_input) VALUES ('%s', '%s', '%s', '1', '%s', NOW(), NOW())", produkId, namaProduk, kategoriIdProduk, userInput)
-						if _, err = db.Exec(query); err != nil {
-							errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
-							dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-							return
-						}
-					} else {
-						errorMessage = "Ketegori Id Produk not Found"
-						dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-						return
-					}
-
-				}
-
-				// cek tabel master produk harga
-				var hargaBeliDBNS sql.NullString
-				query2 := fmt.Sprintf("SELECT harga_beli FROM db_master_product_harga WHERE produk_id = '%s'", produkId)
-				if err := db.QueryRow(query2).Scan(&hargaBeliDBNS); err != nil && err != sql.ErrNoRows {
-					errorMessage = fmt.Sprintf("Error running %q: %+v", query2, err)
-					dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-					return
-				}
-
-				hargaBeliDB := hargaBeliDBNS.String
-				hargaBeliDBInt, _ := strconv.Atoi(hargaBeliDB)
-				if hargaBeliDBInt != hargaBeliProduk {
-					margin := hargaJualProduk - hargaBeliProduk
-					query := fmt.Sprintf("INSERT INTO db_master_product_harga (produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s', '%d', '%d', '%d', '1', '%s', NOW())", produkId, hargaBeliProduk, hargaJualProduk, margin, userInput)
+					query := fmt.Sprintf("INSERT INTO db_master_product (produk_id, nama_produk, cat_produk, status, user_input, tgl_update, tgl_input) VALUES ('%s', '%s', '%s', '1', '%s', NOW(), NOW())", produkId, namaProduk, kategoriIdProduk, userInput)
 					if _, err = db.Exec(query); err != nil {
 						errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
 						dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 						return
 					}
-				}
 
-				query3 := fmt.Sprintf("INSERT INTO db_master_product_stok (produk_id, unit_produk, qty, isi_produk, total_produk, tgl_expired, user_input, tgl_input) VALUES ('%s', '%s', '%d', '%d', '%d', '%s', '%s', NOW())", produkId, unitProduk, qtyProduk, isiProduk, total, tanggalExpiredProduk, userInput)
-				if _, err = db.Exec(query3); err != nil {
-					errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
+					margin := hargaJualProduk - hargaBeliProduk
+					query2 := fmt.Sprintf("INSERT INTO db_master_product_harga (produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s', '%d', '%d', '%d', '1', '%s', NOW())", produkId, hargaBeliProduk, hargaJualProduk, margin, userInput)
+					if _, err = db.Exec(query2); err != nil {
+						errorMessage = fmt.Sprintf("Error running %q: %+v", query2, err)
+						dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+						return
+					}
+
+					query3 := fmt.Sprintf("INSERT INTO db_master_product_stok (produk_id, unit_produk, qty, isi_produk, total_produk, tgl_expired, user_input, tgl_input) VALUES ('%s', '%s', '%d', '%d', '%d', '%s', '%s', NOW())", produkId, unitProduk, qtyProduk, isiProduk, total, tanggalExpiredProduk, userInput)
+					if _, err = db.Exec(query3); err != nil {
+						errorMessage = fmt.Sprintf("Error running %q: %+v", query3, err)
+						dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+						return
+					}
+
+				} else {
+					errorMessage = "Data sudah ada"
 					dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}

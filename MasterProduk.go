@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"gudang/helper"
 	"io/ioutil"
@@ -45,17 +44,20 @@ type JMasterProdukDetailRequest struct {
 	KategoriIdProduk string `json:"kategori_produk"`
 	HargaBeliProduk int `json:"harga_beli"`
 	HargaJualProduk int `json:"harga_jual"`
-	UnitProduk string `json:"unit"`
+	// UnitProduk string `json:"unit"`
 	QtyProduk int `json:"qty"`
-	IsiProduk int `json:"isi"`
+	// IsiProduk int `json:"isi"`
 	UserInputProduk string `json:"user_input"`
-	TanggalExpiredProduk string `json:"tanggal_expired"`
+	// TanggalExpiredProduk string `json:"tanggal_expired"`
 }
 
 type JMasterProdukResponse struct {
 	Id string
 	ProdukId string
 	NamaProduk string
+	HargaBeli string
+	HargaJual string
+	Quantity string
 	KategoriIdProduk string
 	KategoriNamaProduk string
 	Status string
@@ -226,11 +228,10 @@ func MasterProduk(c *gin.Context) {
 								hargaBeliProdukList := reqBody.MasterProdukList[i].HargaBeliProduk
 								hargaJualProdukList := reqBody.MasterProdukList[i].HargaJualProduk
 								// unitProdukList := reqBody.MasterProdukList[i].UnitProduk
-								// qtyProdukList := reqBody.MasterProdukList[i].QtyProduk
+								qtyProdukList := reqBody.MasterProdukList[i].QtyProduk
 								// isiProdukList := reqBody.MasterProdukList[i].IsiProduk
 								userInputProdukList := reqBody.MasterProdukList[i].UserInputProduk
 								// tanggalExpiredProdukList := reqBody.MasterProdukList[i].TanggalExpiredProduk // 2026-12-03 (yyyy-mm-dd)
-								// totalProdukList := 0
 
 								cntKodeProdukDB := 0
 								query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_product WHERE produk_id = '%s'", idProdukList)
@@ -249,25 +250,19 @@ func MasterProduk(c *gin.Context) {
 									}
 								}
 
-								// cek tabel master produk harga
-								var hargaBeliDBNS sql.NullString
-								query2 := fmt.Sprintf("SELECT harga_beli FROM db_master_product_harga WHERE produk_id = '%s'", idProdukList)
-								if err := db.QueryRow(query2).Scan(&hargaBeliDBNS); err != nil && err != sql.ErrNoRows {
+								margin := hargaJualProdukList - hargaBeliProdukList
+								query2 := fmt.Sprintf("INSERT INTO db_master_product_harga (produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s', '%d', '%d', '%d', '1', '%s', NOW())", idProdukList, hargaBeliProdukList, hargaJualProdukList, margin, userInputProdukList)
+								if _, err = db.Exec(query2); err != nil {
 									errorMessage = fmt.Sprintf("Error running %q: %+v", query2, err)
 									dataLogMasterProduk(jMasterProdukResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 									// return
 								}
 
-								hargaBeliDB := hargaBeliDBNS.String
-								hargaBeliDBInt, _ := strconv.Atoi(hargaBeliDB) 
-								if hargaBeliDBInt != hargaBeliProdukList {
-									margin := hargaJualProdukList - hargaBeliProdukList
-									query := fmt.Sprintf("INSERT INTO db_master_product_harga (produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s', '%d', '%d', '%d', '1', '%s', NOW())", idProdukList, hargaBeliProdukList, hargaJualProdukList, margin, userInputProdukList)
-									if _, err = db.Exec(query); err != nil {
-										errorMessage = fmt.Sprintf("Error running %q: %+v", query, err)
-										dataLogMasterProduk(jMasterProdukResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
-										// return
-									}
+								query3 := fmt.Sprintf("INSERT INTO db_master_product_stok (produk_id, qty, user_input, tgl_input) VALUES ('%s', '%d', '%s', NOW())", idProdukList, qtyProdukList, userInputProdukList)
+								if _, err = db.Exec(query3); err != nil {
+									errorMessage = fmt.Sprintf("Error running %q: %+v", query3, err)
+									dataLogMasterProduk(jMasterProdukResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+									// return
 								}
 
 								// if unitProdukList == "pcs" {
@@ -474,7 +469,7 @@ func MasterProduk(c *gin.Context) {
 
 				totalRecords = 0
 				totalPage = 0
-				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_product dbmp LEFT JOIN db_category_product dbcp ON dbmp.cat_produk = dbcp.id %s", queryWhere)
+				query := fmt.Sprintf("SELECT COUNT(*) AS cnt FROM db_master_product dbmp LEFT JOIN db_category_product dbcp ON dbmp.cat_produk = dbcp.id LEFT JOIN db_master_product_stok dmps ON dmps.produk_id COLLATE utf8mb4_unicode_ci = dbmp.produk_id %s", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage = "Error running, " + err.Error()
 					dataLogMasterProduk(jMasterProdukResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
@@ -491,7 +486,7 @@ func MasterProduk(c *gin.Context) {
 				}
 
 				// ---------- start query get menu ----------
-				query1 := fmt.Sprintf(`SELECT dbmp.id, produk_id, nama_produk, dbmp.cat_produk, IFNULL(dbcp.cat_name, '') cat_name, dbmp.status, dbmp.user_input, tgl_update, dbmp.tgl_input FROM db_master_product dbmp LEFT JOIN db_category_product dbcp ON dbmp.cat_produk = dbcp.id %s %s`, queryWhere, queryLimit)
+				query1 := fmt.Sprintf(`SELECT dbmp.id, dbmp.produk_id, nama_produk, qty, dbmp.cat_produk, IFNULL(dbcp.cat_name, '') cat_name, dbmp.status, dbmp.user_input, tgl_update, dbmp.tgl_input FROM db_master_product dbmp LEFT JOIN db_category_product dbcp ON dbmp.cat_produk = dbcp.id LEFT JOIN db_master_product_stok dmps ON dmps.produk_id COLLATE utf8mb4_unicode_ci = dbmp.produk_id %s %s`, queryWhere, queryLimit)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
@@ -505,6 +500,7 @@ func MasterProduk(c *gin.Context) {
 						&jMasterProdukResponse.Id,
 						&jMasterProdukResponse.ProdukId,
 						&jMasterProdukResponse.NamaProduk,
+						&jMasterProdukResponse.Quantity,
 						&jMasterProdukResponse.KategoriIdProduk,
 						&jMasterProdukResponse.KategoriNamaProduk,
 						&jMasterProdukResponse.Status,
@@ -512,6 +508,12 @@ func MasterProduk(c *gin.Context) {
 						&jMasterProdukResponse.TanggalUpdate,
 						&jMasterProdukResponse.TanggalInput,
 					)
+
+					if err != nil {
+						errorMessage = fmt.Sprintf("Error running %q: %+v", query1, err)
+						dataLogMasterProduk(jMasterProdukResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
+						return
+					}
 
 					tanggalUpdateSplit := strings.Split(jMasterProdukResponse.TanggalUpdate, " ")
 					tanggalUpdateDate := tanggalUpdateSplit[0]
@@ -552,13 +554,14 @@ func MasterProduk(c *gin.Context) {
 						return
 					}
 
-					jMasterProdukResponses = append(jMasterProdukResponses, jMasterProdukResponse)
-
-					if err != nil {
+					query1 := fmt.Sprintf(`SELECT harga_jual FROM db_master_product_harga WHERE produk_id = '%s' ORDER BY tgl_input DESC`, jMasterProdukResponse.ProdukId)
+					if err := db.QueryRow(query1).Scan(&jMasterProdukResponse.HargaJual); err != nil {
 						errorMessage = fmt.Sprintf("Error running %q: %+v", query1, err)
 						dataLogMasterProduk(jMasterProdukResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 						return
 					}
+
+					jMasterProdukResponses = append(jMasterProdukResponses, jMasterProdukResponse)
 				}
 				// ---------- end of query get menu ----------
 

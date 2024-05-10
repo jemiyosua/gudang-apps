@@ -30,7 +30,6 @@ type JMasterProdukEachRequest struct {
 	UnitProduk           string
 	QtyProduk            int
 	IsiProduk            int
-	Total                int
 	UserInput            string
 	TanggalExpiredProduk string
 	Page                 int
@@ -48,7 +47,6 @@ type JMasterProdukEachResponse struct {
 	UnitProduk           string
 	QtyProduk            int
 	IsiProduk            int
-	Total                int
 	UserInput            string
 	TanggalExpiredProduk string
 	TanggalInput         string
@@ -147,14 +145,11 @@ func MasterProdukEach(c *gin.Context) {
 			kategoriIdProduk := reqBody.KategoriIdProduk
 			hargaBeliProduk := reqBody.HargaBeliProduk
 			hargaJualProduk := reqBody.HargaJualProduk
-			unitProduk := reqBody.UnitProduk
+			// unitProduk := reqBody.UnitProduk
 			qtyProduk := reqBody.QtyProduk
 			isiProduk := reqBody.IsiProduk
-			total := reqBody.Total
-			tanggalExpiredProduk := reqBody.TanggalExpiredProduk
+			// tanggalExpiredProduk := reqBody.TanggalExpiredProduk
 			userInput := reqBody.UserInput
-			page := reqBody.Page
-			rowPage := reqBody.RowPage
 
 			errorCodeRole, errorMessageRole, role := helper.GetRole(username, c)
 			if errorCodeRole == "1" {
@@ -173,14 +168,6 @@ func MasterProdukEach(c *gin.Context) {
 
 			if method == "" {
 				errorMessage += "Method can't null value"
-			}
-
-			if page == 0 {
-				errorMessage += "Page can't null or 0 value"
-			}
-
-			if rowPage == 0 {
-				errorMessage += "Page can't null or 0 value"
 			}
 
 			if errorMessage != "" {
@@ -239,14 +226,6 @@ func MasterProdukEach(c *gin.Context) {
 					errorMessage += "Isi Produk can't null value"
 				}
 
-				if strconv.Itoa(total) == "" {
-					errorMessage += "Total can't null value"
-				}
-
-				if tanggalExpiredProduk == "" {
-					errorMessage += "Tanggal Expired Produk can't null value"
-				}
-
 				if errorMessage != "" {
 					dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
@@ -276,7 +255,7 @@ func MasterProdukEach(c *gin.Context) {
 						return
 					}
 
-					query3 := fmt.Sprintf("INSERT INTO db_master_product_stok (produk_id, unit_produk, qty, isi_produk, total_produk, tgl_expired, user_input, tgl_input) VALUES ('%s', '%s', '%d', '%d', '%d', '%s', '%s', NOW())", produkId, unitProduk, qtyProduk, isiProduk, total, tanggalExpiredProduk, userInput)
+					query3 := fmt.Sprintf("INSERT INTO db_master_product_stok (produk_id, qty, isi_produk, user_input, tgl_input) VALUES ('%s', '%d', '%d', '%s', NOW())", produkId, qtyProduk, isiProduk, userInput)
 					if _, err = db.Exec(query3); err != nil {
 						errorMessage = fmt.Sprintf("Error running %q: %+v", query3, err)
 						dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
@@ -284,7 +263,7 @@ func MasterProdukEach(c *gin.Context) {
 					}
 
 				} else {
-					errorMessage = "Data sudah ada"
+					errorMessage = "Product Exist!"
 					dataLogMasterProdukEach(jMasterProdukEachResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
 					return
 				}

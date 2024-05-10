@@ -38,9 +38,9 @@ type JProductPriceRequest struct {
 type JProductPriceResponse struct {
 	Id           string
 	KodeProduk   string
-	HargaBeli    int
-	HargaJual    int
-	Margin       int
+	HargaBeli    string
+	HargaJual    string
+	Margin       string
 	Status       string
 	TanggalInput string
 }
@@ -137,10 +137,11 @@ func ProductPrice(c *gin.Context) {
 			kodeProduk := reqBody.KodeProduk
 			hargaBeli := reqBody.HargaBeli
 			hargaJual := reqBody.HargaJual
-			margin := reqBody.Margin
 			status := reqBody.Status
 			page := reqBody.Page
 			rowPage := reqBody.RowPage
+			orderBy := reqBody.OrderBy
+			order := reqBody.Order
 
 			errorCodeRole, errorMessageRole, role := helper.GetRole(username, c)
 			if errorCodeRole == "1" {
@@ -215,7 +216,7 @@ func ProductPrice(c *gin.Context) {
 				}
 				// ------ end of Param Validation ------
 
-				margin = hargaJual - hargaBeli
+				margin := hargaJual - hargaBeli
 
 				query := fmt.Sprintf("INSERT INTO db_master_product_harga(produk_id, harga_beli, harga_jual, margin, status, user_input, tgl_input) VALUES ('%s','%d','%d','%d', 1, '%s', sysdate() + interval 7 hour)", kodeProduk, hargaBeli, hargaJual, margin, username)
 				if _, err = db.Exec(query); err != nil {
@@ -266,9 +267,16 @@ func ProductPrice(c *gin.Context) {
 					queryWhere = " WHERE " + queryWhere
 				}
 
+				queryOrderBy := ""
+				if orderBy != "" {
+					queryOrderBy = fmt.Sprintf("ORDER BY %s %s", orderBy, order)
+				} else {
+					queryOrderBy = " ORDER BY tgl_input DESC "
+				}
+
 				totalRecords = 0
 				totalPage = 0
-				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_category_product %s", queryWhere)
+				query := fmt.Sprintf("SELECT COUNT(1) AS cnt FROM db_master_product_harga %s", queryWhere)
 				if err := db.QueryRow(query).Scan(&totalRecords); err != nil {
 					errorMessage = "Error running, " + err.Error()
 					dataLogProductPrice(jProductPriceResponses, username, errorCode, errorMessage, totalRecords, totalPage, method, path, ip, logData, allHeader, bodyJson, c)
@@ -284,8 +292,7 @@ func ProductPrice(c *gin.Context) {
 					totalPage = math.Ceil(float64(totalRecords) / float64(rowPage))
 				}
 
-				query1 := fmt.Sprintf(`SELECT id, produk_id, harga_beli, harga_jual, margin, status, tgl_input FROM db_master_product_harga %s %s`, queryWhere, queryLimit)
-				fmt.Println(query1)
+				query1 := fmt.Sprintf(`SELECT id, produk_id, harga_beli, harga_jual, margin, status, tgl_input FROM db_master_product_harga %s %s %s`, queryWhere, queryOrderBy, queryLimit)
 				rows, err := db.Query(query1)
 				defer rows.Close()
 				if err != nil {
